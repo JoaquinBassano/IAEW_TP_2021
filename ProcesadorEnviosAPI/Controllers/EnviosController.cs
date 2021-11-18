@@ -34,7 +34,7 @@ namespace ProcesadorEnviosAPI.Controllers
         [Route("{envioId}")]
         [HttpGet]
         [Authorize(Policy = "read:envios")]
-        public async Task<ActionResult<Envio>> GetById(long envioId)
+        public async Task<ActionResult<Envio>> GetById(int envioId)
         {
             var envio = await _context.envios.FindAsync(envioId);
 
@@ -130,6 +130,12 @@ namespace ProcesadorEnviosAPI.Controllers
         {
             // busco el envio al que corresponde la novedad y actualizo su estado
             var recordToModidy = _context.envios.Where(r => r.Id == novedades.IdEnvio).First();
+
+            if (recordToModidy == null)
+            {
+                return NotFound();
+            }
+
             recordToModidy.EstadoEnvio = novedades.NuevoEstado;
             _context.novedades.Add(novedades);
             await _context.SaveChangesAsync();            
