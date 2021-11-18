@@ -2,9 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.HttpsPolicy;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -25,32 +28,53 @@ namespace ProcesadorEnviosAPI
             Configuration = configuration;
         }
 
-        public IConfiguration Configuration { get; }
+        public static IConfiguration Configuration { get; private set; }
 
-        // This method gets called by the runtime. Use this method to add services to the container.
+        // This method gets called by the runtime. Use this method to add services to the container
         public void ConfigureServices(IServiceCollection services)
         {
-            
+            string domain = Configuration["Auth0:Domain"];
+
             services.AddDbContext<ApiContext>(
                 options => 
                     options.UseMySql(Configuration.GetConnectionString("BDConnectionString"),
                     ServerVersion.AutoDetect(Configuration.GetConnectionString("BDConnectionString"))
                 )
             );
+
+            services.AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            }).AddJwtBearer(options =>
+            {
+                options.Authority = domain;
+                options.Audience = Configuration["Auth0:Audience"] ;
+            });
             
-            /*
-            services.AddDbContext<ApiContext>(opt => // Agregar
-                                               opt.UseInMemoryDatabase("TodoList"));
-                                               */
+             services.AddAuthorization(options =>
+            {
+                options.AddPolicy("write:envios", policy => policy.Requirements.Add(new HasScopeRequirement("write:envios", domain)));
+                options.AddPolicy("read:envios", policy => policy.Requirements.Add(new HasScopeRequirement("read:envios", domain)));
+                options.AddPolicy("write:novedades", policy => policy.Requirements.Add(new HasScopeRequirement("write:novedades", domain)));
+                options.AddPolicy("write:operadores", policy => policy.Requirements.Add(new HasScopeRequirement("write:operadores", domain)));
+                options.AddPolicy("read:operadores", policy => policy.Requirements.Add(new HasScopeRequirement("read:operadores", domain)));
+                options.AddPolicy("delete:operadores", policy => policy.Requirements.Add(new HasScopeRequirement("delete:operadores", domain)));
+
+            });
+
 
             services.AddControllers();
+
+            services.AddSingleton<IAuthorizationHandler, HasScopeHandler>();
+
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "ProcesadorEnviosAPI", Version = "v1" });
             });
         }
 
-        // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
+        // This method gets called by the runtime. Use this method to configure the HTTP request pipeline
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
             if (env.IsDevelopment())
@@ -64,12 +88,26 @@ namespace ProcesadorEnviosAPI
 
             app.UseRouting();
 
+            app.UseAuthentication();
+
             app.UseAuthorization();
 
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();
+                endpoints.MapGet("/", async context =>
+                {
+                    await context.Response.WriteAsync("Welcome to running ASP.NET Core on AWS Lambda");
+                });
             });
+
+            app.UseSwagger();
+            app.UseSwaggerUI(c =>{
+                c.SwaggerEndpoint("/Prod/swagger/v1/swagger.json",                             "AWS Serverless Asp.Net Core Web API");
+                c.RoutePrefix = "swagger";
+            });
+
+
         }
     }
 }
