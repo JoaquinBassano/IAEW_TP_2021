@@ -93,7 +93,7 @@ namespace ProcesadorEnviosAPI.Controllers
                         dynamic resp = JObject.Parse(response.Content);
                         token = resp.access_token;
                         //Aca va la url de la API del OPLogistico Norte
-                        urlApi = "https://webhook.site/5181130f-4172-4b7a-beb3-5f6d044b84c4";
+                        urlApi = "https://01ic9vqqt5.execute-api.us-east-1.amazonaws.com/Prod";
                     }
                     break;
                 case "Centro":
@@ -140,7 +140,7 @@ namespace ProcesadorEnviosAPI.Controllers
             _context.novedades.Add(novedades);
             await _context.SaveChangesAsync();            
             //esta url corresponde a el cliente "compraloSiPuedes"
-            string clientCompraloSiPodes = "https://webhook.site/5181130f-4172-4b7a-beb3-5f6d044b84c4" ;
+            string clientCompraloSiPodes = "https://webhook.site/58496354-0818-4dfc-bae5-a9084f292b1b" ;
             var client = new RestClient(clientCompraloSiPodes);
             var request = new RestRequest(Method.POST).AddJsonBody(novedades);
             client.Execute(request);
